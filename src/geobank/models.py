@@ -7,9 +7,11 @@ class Country(models.Model):
     name_ascii = models.CharField(max_length=100)
     geoname_id = models.IntegerField(unique=True)
     continent = models.CharField(max_length=50)
-    code_2 = models.CharField(max_length=2, unique=True)
-    code_3 = models.CharField(max_length=3, unique=True)
-    phone_code = models.CharField(max_length=10)
+    code2 = models.CharField(max_length=2, unique=True)
+    code3 = models.CharField(max_length=3, unique=True)
+    calling_code = models.CharField(max_length=10)
+    postal_code_format = models.CharField(max_length=100, null=True, blank=True)
+    postal_code_regex = models.CharField(max_length=255, null=True, blank=True)
     flag = models.ImageField(upload_to='flags/', null=True, blank=True)
 
     class Meta:
