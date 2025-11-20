@@ -1,3 +1,5 @@
+import logging
+import sys
 from django.core.management.base import BaseCommand
 from geobank.utils import populate_geobank_data
 
@@ -13,6 +15,16 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        # Configure logging to show info messages on console
+        logger = logging.getLogger('geobank')
+        if not logger.handlers:
+            handler = logging.StreamHandler(sys.stdout)
+            handler.setLevel(logging.INFO)
+            formatter = logging.Formatter('%(message)s')
+            handler.setFormatter(formatter)
+            logger.addHandler(handler)
+            logger.setLevel(logging.INFO)
+
         if options['background']:
             try:
                 from geobank.tasks import populate_geobank_task
