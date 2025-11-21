@@ -19,24 +19,25 @@ class Country(models.Model):
         verbose_name_plural = _("Countries")
 
 
-class City(models.Model):
-    name = models.CharField(max_length=100)
-    name_ascii = models.CharField(max_length=100)
-    geoname_id = models.IntegerField(unique=True)
-    country = models.ForeignKey(Country, on_delete=models.CASCADE, related_name='cities')
-    region = models.CharField(max_length=100, null=True, blank=True)
-
-    class Meta:
-        verbose_name = _("City")
-        verbose_name_plural = _("Cities")
-
-
 class Region(models.Model):
     name = models.CharField(max_length=100)
     name_ascii = models.CharField(max_length=100)
     geoname_id = models.IntegerField(unique=True)
+    code = models.CharField(max_length=10, unique=True)
     country = models.ForeignKey(Country, on_delete=models.CASCADE, related_name='regions')
 
     class Meta:
         verbose_name = _("Region")
         verbose_name_plural = _("Regions")
+
+
+class City(models.Model):
+    name = models.CharField(max_length=100)
+    name_ascii = models.CharField(max_length=100)
+    geoname_id = models.IntegerField(unique=True)
+    country = models.ForeignKey(Country, on_delete=models.CASCADE, related_name='cities')
+    region = models.ForeignKey(Region, on_delete=models.CASCADE, related_name='cities')
+
+    class Meta:
+        verbose_name = _("City")
+        verbose_name_plural = _("Cities")

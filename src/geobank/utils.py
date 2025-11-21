@@ -78,6 +78,7 @@ def get_region_data():
                 continue
                 
             country_code = code_parts[0]
+            region_code = code_parts[1]
             
             try:
                 geoname_id = int(parts[3])
@@ -86,6 +87,7 @@ def get_region_data():
 
             data.append({
                 'country_code': country_code,
+                'region_code': region_code,
                 'name': parts[1],
                 'name_ascii': parts[2],
                 'geoname_id': geoname_id,
@@ -164,6 +166,7 @@ def populate_regions():
                 geoname_id=item['geoname_id'],
                 defaults={
                     'name': item['name'],
+                    'code': item['region_code'],
                     'name_ascii': item['name_ascii'],
                     'country': country,
                 }
@@ -174,11 +177,11 @@ def populate_cities():
     data = get_city_data()
     
     countries = {c.code2: c for c in Country.objects.all()}
-    regions = {r.geoname_id: r for r in Region.objects.all()}
+    regions = {r.code: r for r in Region.objects.all()}
     
     for item in data:
         country = countries.get(item['country_code'])
-        region = regions.get(int(item['region_code'])) if item['region_code'].isdigit() else None
+        region = regions.get(item['region_code'])
         if country:
             City.objects.update_or_create(
                 geoname_id=item['geoname_id'],
