@@ -177,11 +177,11 @@ def populate_cities():
     data = get_city_data()
     
     countries = {c.code2: c for c in Country.objects.all()}
-    regions = {r.code: r for r in Region.objects.all()}
+    regions = {f"{r.country.code2},{r.code}": r for r in Region.objects.all()}
     
     for item in data:
         country = countries.get(item['country_code'])
-        region = regions.get(item['region_code'])
+        region = regions.get(f"{item['country_code']},{item['region_code']}")
         if country:
             City.objects.update_or_create(
                 geoname_id=item['geoname_id'],
