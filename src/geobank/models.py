@@ -51,6 +51,9 @@ class Country(models.Model):
     flag_svg = models.URLField(
         max_length=500, blank=True, null=True, verbose_name=_("Flag PNG URL")
     )
+    is_active = models.BooleanField(
+        default=True, verbose_name=_("Is Active")
+    )
 
     class Meta:
         verbose_name = _("Country")
@@ -79,6 +82,9 @@ class Region(models.Model):
         on_delete=models.CASCADE,
         related_name='regions',
         verbose_name=_("Country"),
+    )
+    is_active = models.BooleanField(
+        default=True, verbose_name=_("Is Active")
     )
 
     class Meta:
@@ -113,6 +119,9 @@ class City(models.Model):
         verbose_name=_("Region"),
         null=True,
         blank=True,
+    )
+    is_active = models.BooleanField(
+        default=True, verbose_name=_("Is Active")
     )
 
     class Meta:
