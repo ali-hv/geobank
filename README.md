@@ -45,6 +45,11 @@ A Django package that provides models for Countries and Cities with translation 
    python manage.py populate_geobank --background
    ```
 
+   To choose the cities population:
+   ```bash
+   python manage.py populate_geobank --population-gte {500, 1000, 5000, 15000}
+   ```
+
 ## Requirements
 
 - Django >= 3.2
