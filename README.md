@@ -54,6 +54,5 @@ A Django package that provides models for Countries and Cities with translation 
 - requests
 
 ## TODO
-- [ ] Make number of cities optional(cities with population more than 500, 1000, 5000 or 15000)
 - [ ] Improve data gathering and population faster using async scrips
 - [ ] Add more fields to models
