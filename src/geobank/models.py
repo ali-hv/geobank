@@ -45,11 +45,11 @@ class Country(models.Model):
         blank=True,
         verbose_name=_("Postal Code Regex"),
     )
-    flag = models.ImageField(
-        upload_to='flags/',
-        null=True,
-        blank=True,
-        verbose_name=_("Flag"),
+    flag_png = models.URLField(
+        max_length=500, blank=True, null=True, verbose_name=_("Flag PNG URL")
+    )
+    flag_svg = models.URLField(
+        max_length=500, blank=True, null=True, verbose_name=_("Flag PNG URL")
     )
 
     class Meta:
