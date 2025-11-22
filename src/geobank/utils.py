@@ -1,4 +1,5 @@
 from django.conf import settings
+import json
 import logging
 import zipfile
 import io
@@ -97,17 +98,18 @@ def get_region_data():
         
     return data
 
-def get_city_data():
+def get_city_data(population_gte: int = 15000):
     """
     Fetches city data from geonames.org.
     """
-    url = "https://download.geonames.org/export/dump/cities15000.zip"
+    file_name = f"cities{population_gte}"
+    url = f"https://download.geonames.org/export/dump/{file_name}.zip"
     data = []
     try:
         zip_content = download_with_retry(url)
         
         with zipfile.ZipFile(io.BytesIO(zip_content)) as z:
-            with z.open('cities15000.txt') as f:
+            with z.open(f'{file_name}.txt') as f:
                 with io.TextIOWrapper(f, encoding='utf-8') as text_file:
                     for line in text_file:
                         if not line.strip():
@@ -172,9 +174,9 @@ def populate_regions():
                 }
             )
 
-def populate_cities():
+def populate_cities(population_gte: int = 15000):
     logger.info('Populating cities...')
-    data = get_city_data()
+    data = get_city_data(population_gte)
     
     countries = {c.code2: c for c in Country.objects.all()}
     regions = {f"{r.country.code2},{r.code}": r for r in Region.objects.all()}
@@ -304,12 +306,32 @@ def translate_data(languages):
              os.remove(tmp_file_path)
 
 
-def populate_geobank_data():
+def populate_flags():
+    logger.info('Populating flags...')
+    
+    url = "https://restcountries.com/v3.1/all?fields=cca2,flags"
+    data = json.loads(download_with_retry(url))
+
+    clean_data = {}
+    for row in data:
+        clean_data[row["cca2"]] = row["flags"]
+
+    countries = Country.objects.all()
+    for country in countries:
+        country_flags = clean_data.get(country.code2)
+        if country_flags:
+            country.flag_png = country_flags["png"]
+            country.flag_svg = country_flags["svg"]
+            country.save(update_fields=["flag_png", "flag_svg"])
+
+
+def populate_geobank_data(population_gte: int = 15000):
     languages = [lang[0] for lang in getattr(settings, 'LANGUAGES', [])]
     logger.info(f'Detected languages: {languages}')
 
     populate_countries()
     populate_regions()
-    populate_cities()
+    populate_cities(population_gte)
 
+    populate_flags()
     translate_data(languages)
