@@ -5,7 +5,7 @@ import zipfile
 import io
 import os
 
-from geobank.models import Country, City, Region
+from geobank.models import Country, City, Region, CallingCode
 from .downloaders import download_heavy_file, download_with_retry
 
 logger = logging.getLogger(__name__)
@@ -39,13 +39,25 @@ def get_country_data():
             except ValueError:
                 continue
 
+            raw_calling_code = parts[12]
+            calling_codes = []
+            if raw_calling_code:
+                # Split by " and " as per user requirement for cases like "+1-809 and 1-829"
+                # Also handling potential comma separation just in case, though " and " was specified.
+                # The example was specific about " and ".
+                for part in raw_calling_code.split(" and "):
+                    # Remove + and - and whitespace
+                    clean_code = part.replace("+", "").replace("-", "").strip()
+                    if clean_code:
+                        calling_codes.append(clean_code)
+
             data.append({
                 'code2': parts[0],
                 'code3': parts[1],
                 'name': parts[4],
                 'name_ascii': parts[4], # Assuming ASCII/English
                 'continent': parts[8],
-                'calling_code': parts[12],
+                'calling_codes': calling_codes,
                 'postal_code_format': parts[13],
                 'postal_code_regex': parts[14],
                 'geoname_id': geoname_id,
@@ -141,7 +153,7 @@ def populate_countries():
     data = get_country_data()
     
     for item in data:
-        Country.objects.update_or_create(
+        country, _ = Country.objects.update_or_create(
             geoname_id=item['geoname_id'],
             defaults={
                 'name': item['name'],
@@ -149,11 +161,15 @@ def populate_countries():
                 'continent': item['continent'],
                 'code2': item['code2'],
                 'code3': item['code3'],
-                'calling_code': item['calling_code'],
                 'postal_code_format': item['postal_code_format'],
                 'postal_code_regex': item['postal_code_regex'],
             }
         )
+        
+        # Update calling codes
+        country.calling_codes.all().delete()
+        for code in item['calling_codes']:
+            CallingCode.objects.create(country=country, code=code)
 
 def populate_regions():
     logger.info('Populating regions...')
@@ -194,6 +210,14 @@ def populate_cities(population_gte: int = 15000):
                     'region': region,
                 }
             )
+
+
+def ensure_field(model, field_name):
+    try:
+        model._meta.get_field(field_name)
+    except FieldDoesNotExist:
+        logger.error(f"Field '{field_name}' does not exist on {model.__name__}.")
+        exit(1)
 
 
 def translate_data(languages):
@@ -287,9 +311,8 @@ def translate_data(languages):
         # But assuming standard setup, it should be fine.
         
         for lang in languages:
-             # Verify field exists on models before adding to update list?
-             # bulk_update will fail if field doesn't exist.
-             pass
+            for model in (Country, Region, City):
+                ensure_field(model, f"name_{lang}")
 
         update_fields = [f'name_{lang}' for lang in languages]
         

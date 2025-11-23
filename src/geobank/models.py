@@ -29,10 +29,6 @@ class Country(models.Model):
         unique=True,
         verbose_name=_("ISO Alpha-3 Code"),
     )
-    calling_code = models.CharField(
-        max_length=10,
-        verbose_name=_("Calling Code"),
-    )
     postal_code_format = models.CharField(
         max_length=100,
         null=True,
@@ -58,6 +54,23 @@ class Country(models.Model):
     class Meta:
         verbose_name = _("Country")
         verbose_name_plural = _("Countries")
+
+
+class CallingCode(models.Model):
+    country = models.ForeignKey(
+        Country,
+        on_delete=models.CASCADE,
+        related_name='calling_codes',
+        verbose_name=_("Country"),
+    )
+    code = models.CharField(
+        max_length=20,
+        verbose_name=_("Code"),
+    )
+
+    class Meta:
+        verbose_name = _("Calling Code")
+        verbose_name_plural = _("Calling Codes")
 
 
 class Region(models.Model):
