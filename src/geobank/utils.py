@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.core.exceptions import FieldDoesNotExist
 import json
 import logging
 import zipfile
@@ -140,6 +141,8 @@ def get_city_data(population_gte: int = 15000):
                             'geoname_id': geoname_id,
                             'name': parts[1],
                             'name_ascii': parts[2],
+                            'latitude': parts[4],
+                            'longitude': parts[5],
                             'country_code': parts[8],
                             'region_code': parts[10],
                         })
@@ -200,12 +203,21 @@ def populate_cities(population_gte: int = 15000):
     for item in data:
         country = countries.get(item['country_code'])
         region = regions.get(f"{item['country_code']},{item['region_code']}")
+        try:
+            latitude = float(item['latitude'])
+            longitude = float(item['longitude'])
+        except ValueError:
+            latitude = None
+            longitude = None
+            
         if country:
             City.objects.update_or_create(
                 geoname_id=item['geoname_id'],
                 defaults={
                     'name': item['name'],
                     'name_ascii': item['name_ascii'],
+                    'latitude': latitude,
+                    'longitude': longitude,
                     'country': country,
                     'region': region,
                 }

@@ -115,6 +115,20 @@ class City(models.Model):
         max_length=100,
         verbose_name=_("ASCII Name"),
     )
+    latitude = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        verbose_name=_("Latitude"),
+        null=True,
+        blank=True,
+    )
+    longitude = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        verbose_name=_("Longitude"),
+        null=True,
+        blank=True,
+    )
     geoname_id = models.IntegerField(
         unique=True,
         verbose_name=_("Geoname ID"),
