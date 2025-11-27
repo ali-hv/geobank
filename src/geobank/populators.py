@@ -1,15 +1,16 @@
 """
 Database population functions for populating geobank models with data.
 """
-import io
+import json
 import logging
 import os
 import zipfile
 
 from django.core.exceptions import FieldDoesNotExist
+from django.db import transaction
 
 from .constants import (
-    GEONAMES_ALTERNATE_NAMES_URL,
+    GEOBANK_TRANSLATIONS_URL,
     ISO_639_2_TO_1,
 )
 from .downloaders import download_heavy_file
@@ -170,58 +171,149 @@ def _update_neighbors(country_neighbors_map):
 
 def populate_regions():
     """Populate Region model from geonames data."""
-    logger.info('Populating regions...')
+    logger.info("Populating regions...")
     data = parse_region_data()
-    
+
     countries = {c.code2: c for c in Country.objects.all()}
-    
+
+    # Load existing regions
+    existing = {
+        r.geoname_id: r
+        for r in Region.objects.all()
+    }
+
+    to_create = []
+    to_update = []
+
     for item in data:
-        country = countries.get(item['country_code'])
-        if country:
-            Region.objects.update_or_create(
-                geoname_id=item['geoname_id'],
-                defaults={
-                    'name': item['name'],
-                    'code': item['region_code'],
-                    'name_ascii': item['name_ascii'],
-                    'country': country,
-                }
+        country = countries.get(item["country_code"])
+        if not country:
+            continue
+
+        geo_id = item["geoname_id"]
+        name = item["name"]
+        code = item["region_code"]
+        name_ascii = item["name_ascii"]
+
+        if geo_id in existing:
+            # Update existing region
+            obj = existing[geo_id]
+            obj.name = name
+            obj.code = code
+            obj.name_ascii = name_ascii
+            obj.country = country
+            to_update.append(obj)
+        else:
+            # Create a new region
+            to_create.append(
+                Region(
+                    geoname_id=geo_id,
+                    name=name,
+                    code=code,
+                    name_ascii=name_ascii,
+                    country=country,
+                )
             )
+
+    # Bulk operations
+    if to_create:
+        Region.objects.bulk_create(to_create, batch_size=5000)
+
+    if to_update:
+        Region.objects.bulk_update(
+            to_update,
+            fields=["name", "code", "name_ascii", "country"],
+            batch_size=5000,
+        )
+
+    logger.info(
+        f"Regions populated. Created: {len(to_create)}, Updated: {len(to_update)}"
+    )
+
 
 
 def populate_cities(population_gte: int = 15000):
-    """Populate City model from geonames data."""
-    logger.info('Populating cities...')
+    logger.info("Populating cities...")
     data = parse_city_data(population_gte)
-    
+
     countries = {c.code2: c for c in Country.objects.all()}
     regions = {f"{r.country.code2},{r.code}": r for r in Region.objects.all()}
-    
+
+    # Fetch existing cities by geoname_id (NOT by PK)
+    existing = City.objects.in_bulk(field_name="geoname_id")
+
+    new_objects = []
+    update_objects = []
+
     for item in data:
-        country = countries.get(item['country_code'])
+        country = countries.get(item["country_code"])
         region = regions.get(f"{item['country_code']},{item['region_code']}")
-        
+
+        if not country:
+            continue
+
         try:
-            latitude = float(item['latitude'])
-            longitude = float(item['longitude'])
-        except ValueError:
-            latitude = None
-            longitude = None
-            
-        if country:
-            City.objects.update_or_create(
-                geoname_id=item['geoname_id'],
-                defaults={
-                    'name': item['name'],
-                    'name_ascii': item['name_ascii'],
-                    'latitude': latitude,
-                    'longitude': longitude,
-                    'country': country,
-                    'region': region,
-                    'population': item['population'],
-                    'timezone': item['timezone'],
-                }
+            latitude = float(item["latitude"])
+            longitude = float(item["longitude"])
+        except:
+            latitude = longitude = None
+
+        geoname_id = item["geoname_id"]
+
+        if geoname_id in existing:
+            # UPDATE existing instance (which already includes correct PK)
+            obj = existing[geoname_id]
+            obj.name = item["name"]
+            obj.name_ascii = item["name_ascii"]
+            obj.latitude = latitude
+            obj.longitude = longitude
+            obj.country = country
+            obj.region = region
+            obj.population = item["population"]
+            obj.timezone = item["timezone"]
+
+            update_objects.append(obj)
+
+        else:
+            # CREATE new instance
+            new_objects.append(
+                City(
+                    geoname_id=geoname_id,
+                    name=item["name"],
+                    name_ascii=item["name_ascii"],
+                    latitude=latitude,
+                    longitude=longitude,
+                    country=country,
+                    region=region,
+                    population=item["population"],
+                    timezone=item["timezone"],
+                )
             )
+
+    logger.info(f"Creating {len(new_objects)} new cities...")
+    logger.info(f"Updating {len(update_objects)} existing cities...")
+
+    with transaction.atomic():
+        if new_objects:
+            City.objects.bulk_create(new_objects, batch_size=1000)
+
+        if update_objects:
+            City.objects.bulk_update(
+                update_objects,
+                fields=[
+                    "name",
+                    "name_ascii",
+                    "latitude",
+                    "longitude",
+                    "country",
+                    "region",
+                    "population",
+                    "timezone",
+                ],
+                batch_size=1000,
+            )
+
+    logger.info("Done!")
 
 
 def populate_flags():
@@ -241,7 +333,7 @@ def populate_flags():
 
 def translate_data(languages):
     """
-    Translate entity names using geonames alternate names data.
+    Translate entity names using geobank translations data.
     
     Args:
         languages: List of language codes to translate.
@@ -252,12 +344,11 @@ def translate_data(languages):
     entities = _load_entities()
     logger.info(f'Loaded {len(entities)} entities.')
 
-    translations = {}  # (geoname_id, lang) -> (name, is_preferred)
     tmp_file_path = None
 
     try:
-        logger.info(f"Downloading translations from {GEONAMES_ALTERNATE_NAMES_URL}")
-        tmp_file_path = download_heavy_file(GEONAMES_ALTERNATE_NAMES_URL)
+        logger.info(f"Downloading translations from {GEOBANK_TRANSLATIONS_URL}")
+        tmp_file_path = download_heavy_file(GEOBANK_TRANSLATIONS_URL)
 
         logger.info("Processing translations...")
         translations = _parse_translations(tmp_file_path, entities, languages)
@@ -291,43 +382,53 @@ def _load_entities():
 
 
 def _parse_translations(tmp_file_path, entities, languages):
-    """Parse translations from the alternate names file."""
-    translations = {}
+    """Parse translations from the geobank translations zip file.
+    
+    The zip file contains three JSON files:
+    - country_translations.json
+    - region_translations.json
+    - city_translations.json
+    
+    Each file has the structure:
+    {
+        "geoname_id": {
+            "lang_code": "translated_name",
+            ...
+        },
+        ...
+    }
+    """
+    translations = {}  # (geoname_id, lang) -> name
+    
+    translation_files = [
+        'country_translations.json',
+        'region_translations.json',
+        'city_translations.json',
+    ]
     
     with zipfile.ZipFile(tmp_file_path) as z:
-        with z.open('alternateNames.txt') as f:
-            with io.TextIOWrapper(f, encoding='utf-8') as text_file:
-                for line in text_file:
-                    parts = line.split('\t')
-                    if len(parts) < 4:
-                        continue
+        for filename in translation_files:
+            try:
+                with z.open(filename) as f:
+                    data = json.load(f)
                     
-                    try:
-                        geoname_id = int(parts[1])
-                    except ValueError:
-                        continue
-
-                    if geoname_id not in entities:
-                        continue
-
-                    lang = parts[2]
-                    if lang not in languages:
-                        continue
-
-                    name = parts[3]
-                    is_preferred = len(parts) > 4 and parts[4] == '1'
-                    
-                    key = (geoname_id, lang)
-                    current = translations.get(key)
-                    
-                    if current:
-                        # If we already have a preferred name, and this one isn't, skip
-                        if current[1] and not is_preferred:
+                    for geoname_id_str, lang_dict in data.items():
+                        try:
+                            geoname_id = int(geoname_id_str)
+                        except ValueError:
                             continue
-                        # If this one is preferred and current isn't, overwrite
-                        # Or if both are same preference, overwrite (last wins)
-                    
-                    translations[key] = (name, is_preferred)
+                        
+                        if geoname_id not in entities:
+                            continue
+                        
+                        for lang, name in lang_dict.items():
+                            if lang not in languages:
+                                continue
+                            
+                            translations[(geoname_id, lang)] = name
+            except KeyError:
+                logger.warning(f"Translation file {filename} not found in zip")
+                continue
     
     return translations
 
@@ -336,7 +437,7 @@ def _apply_translations(translations, entities):
     """Apply translations to entities."""
     modified_instances = set()
     
-    for (geoname_id, lang), (name, _) in translations.items():
+    for (geoname_id, lang), name in translations.items():
         instance = entities[geoname_id]
         field_name = f'name_{lang}'
         if hasattr(instance, field_name):

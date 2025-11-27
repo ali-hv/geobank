@@ -8,7 +8,7 @@ import zipfile
 
 from .constants import (
     GEONAMES_COUNTRY_INFO_URL,
-    GEONAMES_ADMIN1_CODES_URL,
+    GEONAMES_REGION_INFO_URL,
     GEONAMES_CITIES_URL_TEMPLATE,
     RESTCOUNTRIES_LANGUAGES_URL,
     RESTCOUNTRIES_CURRENCIES_URL,
@@ -106,11 +106,11 @@ def parse_region_data():
     """
     data = []
     try:
-        content_bytes = download_with_retry(GEONAMES_ADMIN1_CODES_URL)
+        content_bytes = download_with_retry(GEONAMES_REGION_INFO_URL)
         content = content_bytes.decode('utf-8')
             
         for line in content.splitlines():
-            if not line.strip():
+            if line.startswith('#') or not line.strip():
                 continue
             
             parts = line.split('\t')

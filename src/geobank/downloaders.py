@@ -32,7 +32,7 @@ def download_heavy_file(url, timeout=10, retries=5):
                 r.raise_for_status()
             
                 total = int(r.headers.get('content-length', 0))
-                chunk_size = 2 * 1024 * 1024  # 2MB
+                chunk_size = 10 * 1024 * 1024  # 2MB
             
                 with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
                     # Use tqdm.tqdm if tqdm is imported as a module, or just tqdm if it's the class

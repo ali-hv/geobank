@@ -43,10 +43,12 @@ ISO_639_2_TO_1 = {v: k for k, v in ISO_639_1_TO_2.items()}
 
 
 # Geonames URLs
-GEONAMES_COUNTRY_INFO_URL = "https://download.geonames.org/export/dump/countryInfo.txt"
-GEONAMES_ADMIN1_CODES_URL = "https://download.geonames.org/export/dump/admin1CodesASCII.txt"
-GEONAMES_CITIES_URL_TEMPLATE = "https://download.geonames.org/export/dump/cities{population}.zip"
-GEONAMES_ALTERNATE_NAMES_URL = "https://download.geonames.org/export/dump/alternateNames.zip"
+GEONAMES_COUNTRY_INFO_URL = "https://raw.githubusercontent.com/ali-hv/geobank-data/refs/heads/main/countryInfo.tsv"
+GEONAMES_REGION_INFO_URL = "https://raw.githubusercontent.com/ali-hv/geobank-data/refs/heads/main/regionInfo.tsv"
+GEONAMES_CITIES_URL_TEMPLATE = "https://raw.githubusercontent.com/ali-hv/geobank-data/refs/heads/main/cities{population}.zip"
+
+# Geobank Translations URL
+GEOBANK_TRANSLATIONS_URL = "https://raw.githubusercontent.com/ali-hv/geobank-data/refs/heads/main/translations.zip"
 
 # RestCountries URLs
 RESTCOUNTRIES_LANGUAGES_URL = "https://restcountries.com/v3.1/all?fields=languages"

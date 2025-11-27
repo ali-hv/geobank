@@ -58,7 +58,8 @@ A Django package that provides models for Countries and Cities with translation 
 - Celery (optional, for background tasks)
 - tqdm (for progress bars)
 - requests
+- Django autoslug
 
 ## TODO
 - [ ] Improve data gathering and population faster using async scrips
-- [ ] Add more fields to models
+- [ ] Add Capital	and Area(in sq km) fields to Country
