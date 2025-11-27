@@ -1,14 +1,14 @@
 import csv
+import json
 import re
 from collections import defaultdict
-import json
 
 
 def convert_translation_txt_to_json():
     LANG_CODE_RE = re.compile(r"^[a-z]{2,3}$")
     result = defaultdict(dict)
 
-    with open("data.tsv", "r", encoding="utf-8") as f:
+    with open("data.tsv", encoding="utf-8") as f:
         reader = csv.reader(f, delimiter="\t")
         for row in reader:
             if not row:

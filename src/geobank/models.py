@@ -1,7 +1,7 @@
+import autoslug
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
-import autoslug
 from geobank.enums import ContinentChoices
 
 
@@ -30,20 +30,20 @@ class Currency(models.Model):
         verbose_name_plural = _("Currencies")
 
     def __str__(self):
-        return f'{self.name} ({self.code})'
+        return f"{self.name} ({self.code})"
 
 
 class BaseModel(models.Model):
     name = models.CharField(max_length=200, db_index=True)
     name_ascii = models.CharField(max_length=200, blank=True, db_index=True)
-    slug = autoslug.AutoSlugField(populate_from='name_ascii')
+    slug = autoslug.AutoSlugField(populate_from="name_ascii")
     geoname_id = models.IntegerField(null=True, blank=True, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         abstract = True
-        ordering = ['name']
+        ordering = ["name"]
 
 
 class Country(BaseModel):
@@ -74,7 +74,9 @@ class Country(BaseModel):
         verbose_name=_("Top Level Domain"),
     )
     population = models.BigIntegerField(
-        null=True, blank=True, verbose_name=_("Population"),
+        null=True,
+        blank=True,
+        verbose_name=_("Population"),
     )
     postal_code_format = models.CharField(
         max_length=100,
@@ -96,7 +98,7 @@ class Country(BaseModel):
     )
     languages = models.ManyToManyField(
         Language,
-        related_name='countries',
+        related_name="countries",
         verbose_name=_("Languages"),
         blank=True,
         help_text=_("Languages spoken in the country"),
@@ -104,19 +106,17 @@ class Country(BaseModel):
     currency = models.ForeignKey(
         Currency,
         on_delete=models.CASCADE,
-        related_name='countries',
+        related_name="countries",
         verbose_name=_("Currency"),
         null=True,
         blank=True,
     )
     neighbors = models.ManyToManyField(
-        'self',
+        "self",
         verbose_name=_("Neighbors"),
         blank=True,
     )
-    is_active = models.BooleanField(
-        default=True, verbose_name=_("Is Active")
-    )
+    is_active = models.BooleanField(default=True, verbose_name=_("Is Active"))
 
     class Meta:
         verbose_name = _("Country")
@@ -130,7 +130,7 @@ class CallingCode(models.Model):
     country = models.ForeignKey(
         Country,
         on_delete=models.CASCADE,
-        related_name='calling_codes',
+        related_name="calling_codes",
         verbose_name=_("Country"),
     )
     code = models.CharField(
@@ -143,7 +143,7 @@ class CallingCode(models.Model):
         verbose_name_plural = _("Calling Codes")
 
     def __str__(self):
-        return f'{self.country.name}: {self.code}'
+        return f"{self.country.name}: {self.code}"
 
 
 class Region(BaseModel):
@@ -154,20 +154,21 @@ class Region(BaseModel):
     country = models.ForeignKey(
         Country,
         on_delete=models.CASCADE,
-        related_name='regions',
+        related_name="regions",
         verbose_name=_("Country"),
     )
-    is_active = models.BooleanField(
-        default=True, verbose_name=_("Is Active")
-    )
+    is_active = models.BooleanField(default=True, verbose_name=_("Is Active"))
 
     class Meta:
         verbose_name = _("Region")
         verbose_name_plural = _("Regions")
-        unique_together = ("country", "code", )
+        unique_together = (
+            "country",
+            "code",
+        )
 
     def __str__(self):
-        return f'{self.name} ({self.country.code2})'
+        return f"{self.name} ({self.country.code2})"
 
 
 class City(BaseModel):
@@ -188,30 +189,33 @@ class City(BaseModel):
     country = models.ForeignKey(
         Country,
         on_delete=models.CASCADE,
-        related_name='cities',
+        related_name="cities",
         verbose_name=_("Country"),
     )
     region = models.ForeignKey(
         Region,
         on_delete=models.CASCADE,
-        related_name='cities',
+        related_name="cities",
         verbose_name=_("Region"),
         null=True,
         blank=True,
     )
     population = models.BigIntegerField(
-        null=True, blank=True, verbose_name=_("Population"),
+        null=True,
+        blank=True,
+        verbose_name=_("Population"),
     )
     timezone = models.CharField(
-        max_length=40, blank=True, null=True, verbose_name=_("Timezone"),
+        max_length=40,
+        blank=True,
+        null=True,
+        verbose_name=_("Timezone"),
     )
-    is_active = models.BooleanField(
-        default=True, verbose_name=_("Is Active")
-    )
+    is_active = models.BooleanField(default=True, verbose_name=_("Is Active"))
 
     class Meta:
         verbose_name = _("City")
         verbose_name_plural = _("Cities")
 
     def __str__(self):
-        return f'{self.name}, {self.country.code2}'
+        return f"{self.name}, {self.country.code2}"

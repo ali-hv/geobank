@@ -1,14 +1,18 @@
-from modeltranslation.translator import register, TranslationOptions
-from .models import Country, City, Region
+from modeltranslation.translator import TranslationOptions, register
+
+from .models import City, Country, Region
+
 
 @register(Country)
 class CountryTranslationOptions(TranslationOptions):
-    fields = ('name',)
+    fields = ("name",)
+
 
 @register(City)
 class CityTranslationOptions(TranslationOptions):
-    fields = ('name',)
+    fields = ("name",)
+
 
 @register(Region)
 class RegionTranslationOptions(TranslationOptions):
-    fields = ('name',)
+    fields = ("name",)
