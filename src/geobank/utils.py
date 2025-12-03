@@ -8,7 +8,10 @@ with geographic data from external sources (geonames.org, restcountries.com).
 import logging
 
 from django.conf import settings
+from django.db.models import F, FloatField
+from django.db.models.functions import Power, Sqrt
 
+from .models import City
 from .populators import (
     populate_cities,
     populate_countries,
@@ -59,6 +62,46 @@ def populate_geobank_data(population_gte: int = 15000):
     logger.info("Geobank data population complete.")
 
 
+class LocationTypeChoices:
+    CITY = "city"
+    REGION = "region"
+    COUNTRY = "country"
+
+
+def get_location_by_coordinates(
+    lat, lng, location_type: LocationTypeChoices = LocationTypeChoices.CITY
+):
+    """Find country by nearest city (approximate)."""
+    if location_type not in {
+        LocationTypeChoices.CITY,
+        LocationTypeChoices.REGION,
+        LocationTypeChoices.COUNTRY,
+    }:
+        raise ValueError("The location_type argument must be an instance of LocationTypeChoices")
+
+    nearest_city = (
+        City.objects.annotate(
+            distance=Sqrt(
+                Power(F("latitude") - lat, 2, output_field=FloatField())
+                + Power(F("longitude") - lng, 2, output_field=FloatField()),
+                output_field=FloatField(),
+            )
+        )
+        .order_by("distance")
+        .select_related("region__country")
+        .first()
+    )
+
+    if nearest_city:
+        mapping = {
+            LocationTypeChoices.CITY: nearest_city,
+            LocationTypeChoices.REGION: nearest_city.region,
+            LocationTypeChoices.COUNTRY: nearest_city.region.country,
+        }
+        return mapping.get(location_type)
+    return None
+
+
 # Re-export individual functions for granular control
 __all__ = [
     "populate_geobank_data",
@@ -69,4 +112,6 @@ __all__ = [
     "populate_cities",
     "populate_flags",
     "translate_data",
+    "LocationTypeChoices",
+    "get_location_by_coordinates",
 ]
