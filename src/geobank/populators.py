@@ -6,6 +6,7 @@ import json
 import logging
 import zipfile
 
+import tqdm
 from django.core.exceptions import FieldDoesNotExist
 from django.db import transaction
 
@@ -465,7 +466,8 @@ def _save_translations(modified_instances, languages):
     if regions_to_update:
         Region.objects.bulk_update(regions_to_update, update_fields)
     if cities_to_update:
-        City.objects.bulk_update(cities_to_update, update_fields)
+        for i in tqdm(range(0, len(cities_to_update), 1000), desc="Updating city batches"):
+            City.objects.bulk_update(cities_to_update[i : i + 1000], update_fields)
 
 
 def _ensure_field(model, field_name):
